@@ -445,6 +445,7 @@ input[type="datetime-local"]{color-scheme:dark}
     <button class="cam-alt" onclick="fallbackScan()">画像ファイル</button>
   </div>
   <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFile(this)">
+  <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleFile(this)">
   <canvas id="snap-canvas" style="display:none"></canvas>
 </div>
 
