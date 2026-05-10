@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+F<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -523,16 +523,12 @@ function lsSavePhoto(id,dataUrl){
       catch(e){showToast('画像保存に失敗しました（容量不足）');}
     };
     img.src=dataUrl;
-  }catch(e){}
-}
+  }cat
 function lsGetPhoto(id){
   try{return localStorage.getItem('livestock_photo_'+id)||null;}catch(e){return null;}
 }
 function lsDeletePhoto(id){
   try{localStorage.removeItem('livestock_photo_'+id);}catch(e){}
-}
-function lsClearAllPhotos(recs){
-  recs.forEach(r=>{if(r.hasPhoto)lsDeletePhoto(r.id);});
 }
 
 /* ═══════════════════════════════════════════
@@ -913,9 +909,10 @@ function selectVet(el,name){
   document.getElementById('vet').value=name;
 }
 
-function saveRecord(){
+async function saveRecord(){
   const id=Date.now();
   const tag=document.getElementById('tag-num').textContent;
+  if(tag==='—'){showToast('耳標番号を入力してください');return;}
   const dt=document.getElementById('dt').value;
   const temp=document.getElementById('temp').value;
   const chips=[...document.querySelectorAll('#chips .chip.on')].map(c=>c.textContent);
@@ -1258,20 +1255,6 @@ function _buildAndDownloadXlsx(rows,filtered){
     {wch:12},{wch:24},{wch:18},{wch:20}];
   ws['!cols']=colW;
 
-  // Header row style (bold + fill) — SheetJS CE supports basic cell props
-  const range=XLSX.utils.decode_range(ws['!ref']);
-  for(let C=range.s.c;C<=range.e.c;C++){
-    const addr=XLSX.utils.encode_cell({r:0,c:C});
-    if(!ws[addr])continue;
-    ws[addr].s={
-      font:{bold:true,color:{rgb:'FFFFFF'}},
-      fill:{fgColor:{rgb:'1F4E79'}},
-      alignment:{horizontal:'center',vertical:'center',wrapText:true}
-    };
-  }
-  // Freeze top row
-  ws['!freeze']={xSplit:0,ySplit:1};
-
   XLSX.utils.book_append_sheet(wb,ws,'診療記録');
 
   // Summary sheet by staff
@@ -1305,7 +1288,7 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),2500);
 }
 function esc(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 window.addEventListener('popstate',closeCam);
 document.getElementById('staff-input').addEventListener('keydown',e=>{if(e.key==='Enter')addStaff();});
