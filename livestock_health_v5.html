@@ -522,8 +522,9 @@ function lsSavePhoto(id,dataUrl){
       try{localStorage.setItem('livestock_photo_'+id,compressed);}
       catch(e){showToast('画像保存に失敗しました（容量不足）');}
     };
-    img.src=dataUrl;
-  }cat
+       img.src=dataUrl;
+  }catch(e){}
+}
 function lsGetPhoto(id){
   try{return localStorage.getItem('livestock_photo_'+id)||null;}catch(e){return null;}
 }
