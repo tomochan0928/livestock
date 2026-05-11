@@ -101,10 +101,12 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 // For camera capture
                 val intent = fileChooserParams?.createIntent()
-                try {
-                    startActivityForResult(intent, 1)
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                if (intent != null) {
+                    try {
+                        startActivityForResult(intent, 1)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
                 return true
             }
