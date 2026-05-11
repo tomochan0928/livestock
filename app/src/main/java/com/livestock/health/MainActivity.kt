@@ -1,10 +1,14 @@
 package com.livestock.health
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.webkit.*
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -13,6 +17,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private val CAMERA_PERMISSION_CODE = 100
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
+
+    private val fileChooserLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uris: Array<Uri>? = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+        filePathCallback?.onReceiveValue(uris)
+        filePathCallback = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,85 +41,65 @@ class MainActivity : AppCompatActivity() {
     private fun setupWebView() {
         val settings = webView.settings
 
-        // Enable JavaScript
         settings.javaScriptEnabled = true
-
-        // Enable localStorage / DOM Storage
         settings.domStorageEnabled = true
-
-        // Enable database storage
         settings.databaseEnabled = true
-
-        // Allow file access
         settings.allowFileAccess = true
         settings.allowContentAccess = true
-
-        // Allow mixed content (needed for camera)
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-
-        // Media / Camera
         settings.mediaPlaybackRequiresUserGesture = false
-
-        // Zoom
         settings.setSupportZoom(true)
         settings.builtInZoomControls = false
         settings.displayZoomControls = false
-
-        // Viewport
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
-
-        // Cache (offline support)
         settings.cacheMode = WebSettings.LOAD_DEFAULT
 
-        // Set WebViewClient to handle navigation within the app
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                return false  // Let WebView handle all URLs
+                return false
             }
         }
 
-        // Set WebChromeClient for camera, alerts, etc.
         webView.webChromeClient = object : WebChromeClient() {
 
-            // Handle camera permission requests from JavaScript
             override fun onPermissionRequest(request: PermissionRequest?) {
-                request?.let {
-                    it.grant(it.resources)
-                }
+                request?.grant(request.resources)
             }
 
-            // Handle JS alert()
             override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
                 Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
                 result?.confirm()
                 return true
             }
 
-            // Handle JS confirm()
             override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
-                val builder = android.app.AlertDialog.Builder(this@MainActivity)
-                builder.setMessage(message)
-                builder.setPositiveButton("OK") { _, _ -> result?.confirm() }
-                builder.setNegativeButton("キャンセル") { _, _ -> result?.cancel() }
-                builder.show()
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message)
+                    .setPositiveButton("OK") { _, _ -> result?.confirm() }
+                    .setNegativeButton("キャンセル") { _, _ -> result?.cancel() }
+                    .show()
                 return true
             }
 
-            // Handle file chooser (for image upload)
             override fun onShowFileChooser(
                 webView: WebView?,
-                filePathCallback: ValueCallback<Array<android.net.Uri>>?,
+                callback: ValueCallback<Array<Uri>>?,
                 fileChooserParams: FileChooserParams?
             ): Boolean {
-                // For camera capture
-                val intent = fileChooserParams?.createIntent()
-                if (intent != null) {
-                    try {
-                        startActivityForResult(intent, 1)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                // Cancel any previous pending callback
+                filePathCallback?.onReceiveValue(null)
+                filePathCallback = callback
+
+                val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "image/*"
+                }
+                try {
+                    fileChooserLauncher.launch(intent)
+                } catch (e: Exception) {
+                    filePathCallback = null
+                    callback?.onReceiveValue(null)
                 }
                 return true
             }
@@ -114,16 +107,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadApp() {
-        // Load the HTML file from assets (works 100% offline)
         webView.loadUrl("file:///android_asset/www/livestock_health_v5.html")
     }
 
     private fun requestCameraPermission() {
-        val permissions = arrayOf(
-            Manifest.permission.CAMERA,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
+        val permissions = buildList {
+            add(Manifest.permission.CAMERA)
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+                add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
         val notGranted = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
@@ -139,14 +133,12 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_PERMISSION_CODE) {
-            // Reload after permission grant to activate camera features
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 webView.reload()
             }
         }
     }
 
-    // Handle back button — navigate within WebView history
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (webView.canGoBack()) {
